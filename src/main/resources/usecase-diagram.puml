@@ -1,0 +1,20 @@
+@startuml
+actor ParkingAttendant
+actor Customer
+actor Admin
+
+rectangle ParkingLot {
+    ParkingAttendant --> (Issue ticket)
+    ParkingAttendant --> (Get available slots)
+    ParkingAttendant --> (Collect payment)
+    ParkingAttendant --> (Checkout vehicle)
+
+    Customer --> (Get ticket)
+    Customer --> (Pay)
+
+    Admin --> (Add parking lot)
+    Admin --> (Add parking floor)
+    Admin --> (Add parking spot)
+    Admin --> (Add entry and exit points)
+}
+@enduml
