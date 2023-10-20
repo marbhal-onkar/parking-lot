@@ -1,20 +1,30 @@
 @startuml
-actor ParkingAttendant
-actor Customer
+'https://plantuml.com/use-case-diagram
+
+actor "Entry Operator"
+actor "Exit Operator"
 actor Admin
-
+actor Customer
+left to right direction
 rectangle ParkingLot {
-    ParkingAttendant --> (Issue ticket)
-    ParkingAttendant --> (Get available slots)
-    ParkingAttendant --> (Collect payment)
-    ParkingAttendant --> (Checkout vehicle)
+    (Generate ticket) --> (Check available slots) #line.dashed;:includes
+    "Entry Operator" --> (Generate ticket)
 
-    Customer --> (Get ticket)
+    (Collect payment) --> (Calculate fees) #line.dashed;:includes
+    "Exit Operator" --> (Collect payment)
+    "Exit Operator" --> (Checkout vehicle)
+
+    (Pay) --> (UPI) :extend
+    (Pay) --> (Cash) :extend
+    (Pay) --> (Credit Card) :extend
+
     Customer --> (Pay)
+    Customer --> (Check the spot status)
 
     Admin --> (Add parking lot)
     Admin --> (Add parking floor)
     Admin --> (Add parking spot)
-    Admin --> (Add entry and exit points)
+    Admin --> (Add entry and exit gates)
+    Admin --> (Add fees)
 }
 @enduml

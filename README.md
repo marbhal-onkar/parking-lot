@@ -31,17 +31,18 @@ What are some questions you would ask to gather requirements?
 ## Requirements
 Build an online parking lot management system that can support the following requirements:
 * Should have multiple floors.
-* Multiple entries and exit points.
-* A person has to collect a ticket at entry and pay at or before exit.
+* Multiple entries and exit gates.
+* A user has to collect a ticket at entry and pay at or before exit.
 * Pay at:
     * Exit counter (Cash to the parking attendant)
-    * Dedicated automated booth on each floor
+    * Dedicated automated booth on each floor - Payment counter
     * Online
 * Pay via:
     * Cash
     * Credit Card
     * UPI
-* Allow entry for a vehicle if a slot is available for it. Show on the display at entry if a slot is not available.
+* Allow entry for a vehicle if a slot is available for it. 
+* Show on the display at entry if a slot is not available.
 * Parking Spots of 3 types:
     * Large
     * Medium
@@ -60,9 +61,10 @@ What would be the use cases i.e. the interactions between the actors and the sys
 ### Actors
 What would be the actors in this system?
 ```
-1. Parking Attendant
-2. Customer
-3. Admin
+1. Entry Operators
+2. Exit Operators
+3. Customer
+4. Admin
 ```
 
 ### Use cases
@@ -71,55 +73,71 @@ What would be the use cases i.e. the interactions between the actors and the sys
 
 #### Actor 1
 
-Name of the actor - ` Parking Attendant `
+Name of the actor - ` Entry Operators `
 
 Use cases:
-1. ` Issue ticket`
-2. ` Get available slots`
-3. ` Collect payment`
-4. ` Checkout vehicle`
+1. ` Check available slots`
+2. ` Issue ticket and allocate spot`
 
 #### Actor 2
+
+Name of the actor - ` Exit Operators`
+
+Use cases:
+
+1. ` Collect payment`
+2. ` Checkout vehicle`
+
+#### Actor 3
 
 Name of the actor - ` Customer `
 
 Use cases:
 
-1. `Get ticket` 
-2. `Pay`
+1. `Pay`
+2. `Check status` 
 
-
-#### Actor 3
+#### Actor 4
 
 Name of the actor - ` Admin`
 
-Use cases:
+Use cases: `CRUD`
 1. `Add parking lot` 
 2. `Add parking floor`
 3. `Add parking spot`
 4. `Add entry and exit points`
+5. `Add Fees`
 
 **Use case diagram for the system**
 
 ```
 @startuml
-actor ParkingAttendant
-actor Customer
+
+actor "Entry Operator"
+actor "Exit Operator"
 actor Admin
-
+actor Customer
+left to right direction
 rectangle ParkingLot {
-    ParkingAttendant --> (Issue ticket)
-    ParkingAttendant --> (Get available slots)
-    ParkingAttendant --> (Collect payment)
-    ParkingAttendant --> (Checkout vehicle)
+    (Generate ticket) --> (Check available slots) #line.dashed;:includes
+    "Entry Operator" --> (Generate ticket)
 
-    Customer --> (Get ticket)
+    (Collect payment) --> (Calculate fees) #line.dashed;:includes
+    "Exit Operator" --> (Collect payment)
+    "Exit Operator" --> (Checkout vehicle)
+
+    (Pay) --> (UPI) :extend
+    (Pay) --> (Cash) :extend
+    (Pay) --> (Credit Card) :extend
+
     Customer --> (Pay)
+    Customer --> (Check the spot status)
 
     Admin --> (Add parking lot)
     Admin --> (Add parking floor)
     Admin --> (Add parking spot)
-    Admin --> (Add entry and exit points)
+    Admin --> (Add entry and exit gates)
+    Admin --> (Add fees)
 }
 @enduml
 ```
@@ -135,25 +153,96 @@ You can simply write the APIs in the following format:
 
 You could also use a tool like [Swagger](https://swagger.io/) to design the APIs or follow [this](https://github.com/jamescooke/restapidocs) repository for a simple way to use Markdown to structure your API documentation.
 
-### APIs for Actor 1
+### Admin APIs
 
-#### APIs Category 1
-```markdown
-* `API name` - `HTTP method` - `URL` - `?Request body` - `?Response body`
+All the various use cases are simple CRUD operations. We can design the following APIs for the admin:
+
+#### Parking lot APIs
+* `createParkingLot` - `POST /parking-lot` - Request body: `ParkingLot`
+* `getParkingLot` - `GET /parking-lot/{id}` - Response body: `ParkingLot`
+* `getAllParkingLots` - `GET /parking-lot` - Response body: `List<ParkingLot>`
+* `updateParkingLot` - `PUT /parking-lot/{id}` - Request body: `ParkingLot`
+* `deleteParkingLot` - `DELETE /parking-lot/{id}`
+
+Similarly, we can design APIs for `ParkingFloor`, `ParkingSpot` and all the master entities.
+
+#### Parking spot APIs
+* `createParkingSpot` - `POST /parking-spot` - Request body: `ParkingSpot`
+* `getParkingSpot` - `GET /parking-spot/{id}` - Response body: `ParkingSpot`
+* `getAllParkingSpots` - `GET /parking-spot` - Response body: `List<ParkingSpot>`
+* `updateParkingSpot` - `PUT /parking-spot/{id}` - Request body: `ParkingSpot`
+* `deleteParkingSpot` - `DELETE /parking-spot/{id}`
+
+You might also want an API to `Update status of a parking spot`. This can be done by using the existing `updateParkingSpot` API or by creating a new API that only updates the status of the parking spot.
+
+* `updateParkingSpotStatus` - `PUT /parking-spot/{id}/status` - Request body: `ParkingSpotStatus`
+* `getParkingSpotStatus` - `GET /parking-spot/{id}/status` - Response body: `ParkingSpotStatus`
+
+### Parking attendant APIs
+
+Use cases:
+1. `Check empty slots`
+2. `Issue a ticket` - `Allocating a slot`
+3. `Collect payment`
+4. `Checkout` - `Has the user paid?`
+
+#### Check empty slots
+
+Let us look at the various requirements for a parking spot:
+* CRUD on parking spots
+* Get all parking spots
+* Get all available parking spots
+
+We can augment our current `getAllParkingSpots` API by adding a query parameter to filter the parking spots based on their status. This will allow us to get all the available parking spots as well.
+
+**Get all parking spots**
+* `getAllParkingSpots` - `GET /parking-spot` - Response body: `List<ParkingSpot>`
+
+**Get all available parking spots**
+* `getAllParkingSpots` - `GET /parking-spot?status=AVAILABLE` - Response body: `List<ParkingSpot>`
+
+**Get all occupied parking spots**
+* `getAllParkingSpots` - `GET /parking-spot?status=OCCUPIED` - Response body: `List<ParkingSpot>`
+
+#### Issue a ticket
+
+* `issueTicket` - `POST /ticket` - Request body: `TicketRequest` - Response body: `Ticket`
+
+We might not want to use the current `Ticket` class for the request body since it contains a lot of information that is either not required or is not available at the time of ticket generation. We can create a new class `TicketRequest` that contains only the required information.
+
+```mermaid
+classDiagram
+    class TicketRequest {
+        +String licensePlate
+        +VehicleType vehicleType
+    }
 ```
 
-### APIs for Actor 2
+### Collect payment
 
-#### APIs Category 1
-```markdown
-* `API name` - `HTTP method` - `URL` - `?Request body` - `?Response body`
+* `collectPayment` - `POST /payment` - Request body: `PaymentRequest` - Response body: `Payment`
+
+PaymentRequest:
+```mermaid
+classDiagram
+    class PaymentRequest {
+        +String ticketId
+        +PaymentType paymentType
+    }
 ```
 
-### APIs for Actor 3
+### Checkout
 
-#### APIs Category 1
-```markdown
-* `API name` - `HTTP method` - `URL` - `?Request body` - `?Response body`
+* `checkout` - `POST /checkout` - Request body: `CheckoutRequest` - Response body: `CheckoutResponse`
+
+CheckoutRequest:
+```mermaid
+classDiagram
+    class CheckoutRequest {
+        +String ticketId
+        +Date checkoutTime
+        +String exitGateId
+    }
 ```
 
 ## Class diagram
